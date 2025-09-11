@@ -44,4 +44,20 @@ program
     console.log(`export AWS_PROFILE=${args.profile}`)
   })
 
+const envCommand = program.command('env').description('Manage AWS environment variables.')
+
+envCommand
+  .command('print')
+  .description('print the aws environment variables')
+  .action(() => {
+    console.log(`AWS_PROFILE=${process.env.AWS_PROFILE ?? ''}`)
+  })
+
+envCommand
+  .command('clear')
+  .description('clear the aws environment variables')
+  .action(() => {
+    console.log('unset AWS_PROFILE')
+  })
+
 program.parse()
