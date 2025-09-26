@@ -109,4 +109,62 @@ envCommand
     writeSync(3, 'unset AWS_CREDENTIAL_EXPIRATION\n')
   })
 
+const cognitoCommand = program
+  .command('cognito')
+  .description('Interact with AWS Cognito user pools.')
+
+cognitoCommand
+  .command('list')
+  .description('list cognito user pools')
+  .action(async () => {
+    let nextToken = null
+    let selectedPool = null
+
+    while (!selectedPool) {
+      const command = `aws cognito-idp list-user-pools --max-results 10${
+        nextToken ? ` --next-token ${nextToken}` : ''
+      }`
+
+      const { stdout } = await exec(command, {
+        env: {
+          ...process.env
+        }
+      })
+
+      const { UserPools, NextToken } = JSON.parse(stdout)
+
+      const choices = UserPools.map((pool) => ({
+        name: pool.Name,
+        value: pool.Id
+      }))
+
+      if (NextToken) {
+        choices.push({
+          name: 'Load more...',
+          value: NextToken
+        })
+      } else if (nextToken) {
+        choices.push({
+          name: 'Start over',
+          value: null
+        })
+      }
+
+      const pool = await select({
+        message: 'Select a user pool',
+        choices
+      })
+
+      if (pool === NextToken) {
+        nextToken = NextToken
+      } else if (pool === null) {
+        nextToken = null
+      } else {
+        selectedPool = pool
+      }
+    }
+
+    console.log(`Selected pool ID: ${selectedPool}`)
+  })
+
 program.parse()
