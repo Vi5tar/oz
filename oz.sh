@@ -2,7 +2,7 @@ oz() {
   local temp_file
   temp_file=$(mktemp)
   
-  command oz "$@" | tee "$temp_file" | grep -v -E "^(export|unset)"
+  command oz "$@" 3> "$temp_file"
   
   while IFS= read -r line; do
     if [[ "$line" == export* ]] || [[ "$line" == unset* ]]; then

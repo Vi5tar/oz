@@ -5,6 +5,7 @@ import childProcess, { spawn } from 'node:child_process'
 import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts'
 import { Command, Option } from 'commander'
 import { fromIni } from '@aws-sdk/credential-providers'
+import { writeSync } from 'node:fs'
 
 const exec = util.promisify(childProcess.exec)
 const program = new Command()
@@ -48,23 +49,23 @@ program
     }
 
     if (args.export === 'profile') {
-      console.log('unset AWS_ACCESS_KEY_ID')
-      console.log('unset AWS_SECRET_ACCESS_KEY')
-      console.log('unset AWS_SESSION_TOKEN')
-      console.log('unset AWS_CREDENTIAL_EXPIRATION')
-      console.log(`export AWS_PROFILE=${args.profile}`)
+      writeSync(3, 'unset AWS_ACCESS_KEY_ID\n')
+      writeSync(3, 'unset AWS_SECRET_ACCESS_KEY\n')
+      writeSync(3, 'unset AWS_SESSION_TOKEN\n')
+      writeSync(3, 'unset AWS_CREDENTIAL_EXPIRATION\n')
+      writeSync(3, `export AWS_PROFILE=${args.profile}\n`)
     } else if (args.export === 'creds') {
-      console.log('unset AWS_PROFILE')
+      writeSync(3, 'unset AWS_PROFILE\n')
       const { stdout } = await exec(
         `aws configure export-credentials --profile ${args.profile} --format env`
       )
-      console.log(stdout)
+      writeSync(3, stdout)
     } else {
-      console.log('unset AWS_PROFILE')
-      console.log('unset AWS_ACCESS_KEY_ID')
-      console.log('unset AWS_SECRET_ACCESS_KEY')
-      console.log('unset AWS_SESSION_TOKEN')
-      console.log('unset AWS_CREDENTIAL_EXPIRATION')
+      writeSync(3, 'unset AWS_PROFILE\n')
+      writeSync(3, 'unset AWS_ACCESS_KEY_ID\n')
+      writeSync(3, 'unset AWS_SECRET_ACCESS_KEY\n')
+      writeSync(3, 'unset AWS_SESSION_TOKEN\n')
+      writeSync(3, 'unset AWS_CREDENTIAL_EXPIRATION\n')
     }
   })
 
@@ -85,11 +86,11 @@ envCommand
   .command('clear')
   .description('clear the aws environment variables')
   .action(() => {
-    console.log('unset AWS_PROFILE')
-    console.log('unset AWS_ACCESS_KEY_ID')
-    console.log('unset AWS_SECRET_ACCESS_KEY')
-    console.log('unset AWS_SESSION_TOKEN')
-    console.log('unset AWS_CREDENTIAL_EXPIRATION')
+    writeSync(3, 'unset AWS_PROFILE\n')
+    writeSync(3, 'unset AWS_ACCESS_KEY_ID\n')
+    writeSync(3, 'unset AWS_SECRET_ACCESS_KEY\n')
+    writeSync(3, 'unset AWS_SESSION_TOKEN\n')
+    writeSync(3, 'unset AWS_CREDENTIAL_EXPIRATION\n')
   })
 
 program.parse()
