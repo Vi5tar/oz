@@ -8,99 +8,21 @@ const exec = util.promisify(childProcess.exec)
 export const login = new Command('login')
   .description('login to a cognito user pool')
   .action(async () => {
-    let nextToken = null
-    let selectedPool = null
-
-    while (!selectedPool) {
-      const command = `aws cognito-idp list-user-pools --max-results 10${
-        nextToken ? ` --next-token ${nextToken}` : ''
-      }`
-
-      const { stdout } = await exec(command, {
-        env: {
-          ...process.env
-        }
-      })
-
-      const { UserPools, NextToken } = JSON.parse(stdout)
-
-      const choices = UserPools.map((pool) => ({
-        name: pool.Name,
-        value: pool.Id
-      }))
-
-      if (NextToken) {
-        choices.push({
-          name: 'Load more...',
-          value: NextToken
-        })
-      } else if (nextToken) {
-        choices.push({
-          name: 'Start over',
-          value: null
-        })
-      }
-
-      const pool = await select({
-        message: 'Select a user pool',
-        choices
-      })
-
-      if (pool === NextToken) {
-        nextToken = NextToken
-      } else if (pool === null) {
-        nextToken = null
-      } else {
-        selectedPool = pool
-      }
-    }
+    const selectedPool = await _getPaginatedSelection(
+      'aws cognito-idp list-user-pools --max-results 10',
+      'UserPools',
+      'Name',
+      'Id'
+    )
 
     console.log(`Selected pool ID: ${selectedPool}`)
 
-    nextToken = null
-    let selectedClient = null
-
-    while (!selectedClient) {
-      const command = `aws cognito-idp list-user-pool-clients --user-pool-id ${selectedPool}`
-
-      const { stdout } = await exec(command, {
-        env: {
-          ...process.env
-        }
-      })
-
-      const { UserPoolClients, NextToken } = JSON.parse(stdout)
-
-      const choices = UserPoolClients.map((client) => ({
-        name: client.ClientName,
-        value: client.ClientId
-      }))
-
-      if (NextToken) {
-        choices.push({
-          name: 'Load more...',
-          value: NextToken
-        })
-      } else if (nextToken) {
-        choices.push({
-          name: 'Start over',
-          value: null
-        })
-      }
-
-      const client = await select({
-        message: 'Select a client',
-        choices
-      })
-
-      if (client === NextToken) {
-        nextToken = NextToken
-      } else if (client === null) {
-        nextToken = null
-      } else {
-        selectedClient = client
-      }
-    }
+    const selectedClient = await _getPaginatedSelection(
+      `aws cognito-idp list-user-pool-clients --user-pool-id ${selectedPool}`,
+      'UserPoolClients',
+      'ClientName',
+      'ClientId'
+    )
 
     console.log(`Selected client ID: ${selectedClient}`)
 
@@ -195,3 +117,50 @@ export const login = new Command('login')
       process.exit(1)
     }
   })
+
+  const _getPaginatedSelection = async (command, listKey, choiceNameKey, choiceValueKey) => {
+    let nextToken = null
+    let selected = null
+
+    while (!selected) {
+      const { stdout } = await exec(`${command}${nextToken ? ` --next-token ${nextToken}` : ''}`, {
+        env: {
+          ...process.env
+        }
+      })
+
+      const { [listKey]: items, NextToken } = JSON.parse(stdout)
+
+      const choices = items.map((item) => ({
+        name: item[choiceNameKey],
+        value: item[choiceValueKey]
+      }))
+
+      if (NextToken) {
+        choices.push({
+          name: 'Load more...',
+          value: NextToken
+        })
+      } else if (nextToken) {
+        choices.push({
+          name: 'Start over',
+          value: null
+        })
+      }
+
+      const selection = await select({
+        message: 'Select a user pool',
+        choices
+      })
+
+      if (selection === NextToken) {
+        nextToken = NextToken
+      } else if (selection === null) {
+        nextToken = null
+      } else {
+        selected = selection
+      }
+    }
+
+    return selected
+  }
