@@ -7,12 +7,16 @@ const exec = util.promisify(childProcess.exec)
 
 export const login = new Command('login')
   .description('login to a cognito user pool')
-  .action(async () => {
+  .option('-l, --like <string>', 'user pool name search term')
+  .action(async (args) => {
+    const { like } = args
+
     const selectedPool = await _getPaginatedSelection(
-      'aws cognito-idp list-user-pools --max-results 10',
+      `aws cognito-idp list-user-pools --max-results 15`,
       'UserPools',
       'Name',
-      'Id'
+      'Id',
+      like ? (userPool) => userPool.Name.includes(like) : undefined
     )
 
     console.log(`Selected pool ID: ${selectedPool}`)
@@ -118,9 +122,10 @@ export const login = new Command('login')
     }
   })
 
-  const _getPaginatedSelection = async (command, listKey, choiceNameKey, choiceValueKey) => {
+  const _getPaginatedSelection = async (command, listKey, choiceNameKey, choiceValueKey, filter) => {
     let nextToken = null
     let selected = null
+    let allResults = []
 
     while (!selected) {
       const { stdout } = await exec(`${command}${nextToken ? ` --next-token ${nextToken}` : ''}`, {
@@ -131,32 +136,42 @@ export const login = new Command('login')
 
       const { [listKey]: items, NextToken } = JSON.parse(stdout)
 
-      const choices = items.map((item) => ({
+      const choiceMapper = (item) => ({
         name: item[choiceNameKey],
         value: item[choiceValueKey]
-      }))
+      })
+
+      const defaultChoiceIndex = allResults.length
+      if (filter) {
+        allResults.push(...items.filter(filter))
+      } else {
+        allResults.push(...items)
+      }
+
+      const choices = allResults.map(choiceMapper)
 
       if (NextToken) {
         choices.push({
           name: 'Load more...',
           value: NextToken
         })
-      } else if (nextToken) {
-        choices.push({
-          name: 'Start over',
-          value: null
-        })
       }
+
+      choices.push({
+        name: 'Cancel',
+        value: null
+      })
 
       const selection = await select({
         message: 'Select a user pool',
-        choices
+        choices,
+        default: choices[defaultChoiceIndex]?.value
       })
 
       if (selection === NextToken) {
         nextToken = NextToken
       } else if (selection === null) {
-        nextToken = null
+        process.exit(0)
       } else {
         selected = selection
       }
